@@ -1,5 +1,5 @@
 import axios from "axios";
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8002";
 export const api = axios.create({ baseURL: BASE_URL });
 export const getPortfolio = () => api.get("/api/portfolio/").then(r => r.data);
 export const addHolding = (ticker: string, shares: number, avg_cost: number) => api.post("/api/portfolio/holdings", { ticker, shares, avg_cost }).then(r => r.data);

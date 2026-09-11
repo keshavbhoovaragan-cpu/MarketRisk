@@ -2,7 +2,7 @@
 set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-BACKEND_CMD="cd \"$ROOT/backend\" && ./venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload"
+BACKEND_CMD="cd \"$ROOT/backend\" && ./venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload"
 FRONTEND_CMD="cd \"$ROOT/frontend\" && npm run dev"
 
 printf '\nStarting MarketRisk backend...\n'

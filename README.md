@@ -36,9 +36,9 @@ npm run dev
 ```
 
 The app will be available at:
-- Frontend: http://localhost:3001
-- Backend API: http://localhost:8001
-- Swagger docs: http://localhost:8001/docs
+- Frontend: http://localhost:3002
+- Backend API: http://localhost:8002
+- Swagger docs: http://localhost:8002/docs
 
 ## Features
 
