@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.venv/
+venv/
+.env
+.venv*
+
+# OS/editor
+.DS_Store
+.vscode/
+*.swp
+*.swo
+
+# Node
+node_modules/
+.next/
+out/
+.npm/
+
+# Local data
+backend/data/
+*.db
+*.sqlite3
+
+# Coverage / logs
+coverage/
+*.log
+htmlcov/

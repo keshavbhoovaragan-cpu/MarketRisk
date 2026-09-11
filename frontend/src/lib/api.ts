@@ -1,0 +1,14 @@
+import axios from "axios";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+export const api = axios.create({ baseURL: BASE_URL });
+export const getPortfolio = () => api.get("/api/portfolio/").then(r => r.data);
+export const addHolding = (ticker: string, shares: number, avg_cost: number) => api.post("/api/portfolio/holdings", { ticker, shares, avg_cost }).then(r => r.data);
+export const removeHolding = (ticker: string) => api.delete(`/api/portfolio/holdings/${ticker}`).then(r => r.data);
+export const getMovers = () => api.get("/api/market/movers").then(r => r.data);
+export const getMarketOverview = () => api.get("/api/market/overview").then(r => r.data);
+export const getPortfolioRisk = () => api.get("/api/risk/portfolio").then(r => r.data);
+export const getRiskHistory = () => api.get("/api/risk/history").then(r => r.data);
+export const getStressTest = () => api.get("/api/risk/stress-test").then(r => r.data);
+export const getScreener = () => api.get("/api/stocks/screener").then(r => r.data);
+export const compareStocks = (tickers: string, period = "1y") => api.get("/api/stocks/compare", { params: { tickers, period } }).then(r => r.data);
+export const getStockDetail = (ticker: string, period = "1y") => api.get(`/api/stocks/${ticker}`, { params: { period } }).then(r => r.data);
