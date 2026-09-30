@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ghcr-build-${{ github.ref_name }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   packages: write
@@ -18,11 +22,15 @@ env:
 
 jobs:
   build-and-push:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -78,5 +86,6 @@ jobs:
           git add infra/k8s/dev/app.yaml infra/k8s/dev/spark-application.yaml infra/k8s/dev/scheduled-spark-application.yaml
           if ! git diff --cached --quiet; then
             git commit -m "Update Kubernetes image tags for GHCR"
-            git push origin HEAD:main
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin HEAD:"${GITHUB_REF_NAME}"
           fi
