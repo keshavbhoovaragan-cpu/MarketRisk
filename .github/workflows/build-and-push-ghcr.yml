@@ -1,0 +1,82 @@
+name: Build and publish GHCR images
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: keshavbhoovaragan-cpu
+  BACKEND_IMAGE: marketrisk-api
+  FRONTEND_IMAGE: marketrisk-frontend
+  SPARK_IMAGE: marketrisk-spark-job
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.BACKEND_IMAGE }}:latest
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.FRONTEND_IMAGE }}:latest
+
+      - name: Build and push Spark job image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/spark_jobs/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.SPARK_IMAGE }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.SPARK_IMAGE }}:latest
+
+      - name: Update manifest image tags
+        run: |
+          python scripts/update-image-tags.py \
+            --tag "${{ github.sha }}" \
+            --prefix "${{ env.REGISTRY }}/${{ env.OWNER }}" \
+            --files infra/k8s/dev/app.yaml infra/k8s/dev/spark-application.yaml infra/k8s/dev/scheduled-spark-application.yaml
+
+      - name: Commit manifest tag updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add infra/k8s/dev/app.yaml infra/k8s/dev/spark-application.yaml infra/k8s/dev/scheduled-spark-application.yaml
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Kubernetes image tags for GHCR"
+            git push origin HEAD:main
+          fi
