@@ -1,0 +1,65 @@
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: ScheduledSparkApplication
+metadata:
+  name: risk-batch-nightly
+  namespace: market-risk
+spec:
+  suspend: true
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulRunHistoryLimit: 2
+  failedRunHistoryLimit: 3
+  template:
+    type: Python
+    mode: cluster
+    image: marketrisk-spark-job:latest
+    imagePullPolicy: IfNotPresent
+    mainApplicationFile: local:///opt/marketrisk/spark_jobs/risk_batch.py
+    sparkVersion: 4.0.1
+    arguments:
+      - --source
+      - yfinance
+      - --tickers
+      - AAPL,MSFT,NVDA
+      - --period
+      - 6mo
+      - --holdings
+      - /opt/marketrisk/spark_jobs/example_holdings.csv
+      - --raw-output
+      - s3a://market-risk/raw-prices
+      - --results-output
+      - s3a://market-risk/risk-results
+      - --simulations
+      - "1000"
+      - --shuffle-partitions
+      - "4"
+      - --object-store-output
+    restartPolicy:
+      type: Never
+    driver:
+      cores: 1
+      memory: 1g
+      serviceAccount: spark-runner
+      envVars:
+        MINIO_ENDPOINT: http://minio.market-risk.svc.cluster.local:9000
+      envSecretKeyRefs:
+        AWS_ACCESS_KEY_ID:
+          name: minio-credentials
+          key: access-key
+        AWS_SECRET_ACCESS_KEY:
+          name: minio-credentials
+          key: secret-key
+    executor:
+      instances: 1
+      cores: 1
+      memory: 1g
+      deleteOnTermination: false
+      envVars:
+        MINIO_ENDPOINT: http://minio.market-risk.svc.cluster.local:9000
+      envSecretKeyRefs:
+        AWS_ACCESS_KEY_ID:
+          name: minio-credentials
+          key: access-key
+        AWS_SECRET_ACCESS_KEY:
+          name: minio-credentials
+          key: secret-key

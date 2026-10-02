@@ -9,7 +9,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   useEffect(()=>{ Promise.all([getPortfolioRisk().then(setRisk).catch(()=>{}),getRiskHistory().then(r=>setHistory(r.snapshots||[])).catch(()=>{})]).finally(()=>setLoading(false)); },[]);
   return (
-    <main style={{minHeight:"100vh"}}><NavBar/>
+    <main className="workspace-page" style={{minHeight:"100vh"}}><NavBar/>
       <div className="section">
         <div style={{marginBottom:28}}>
           <div style={{fontSize:10,color:"rgba(167,139,250,0.6)",letterSpacing:"0.2em",fontWeight:700,marginBottom:8}}>PORTFOLIO ANALYTICS</div>

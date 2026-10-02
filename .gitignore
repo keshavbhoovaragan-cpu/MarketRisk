@@ -7,6 +7,7 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.minio
 .venv*
 
 # OS/editor
@@ -23,6 +24,7 @@ out/
 
 # Local data
 backend/data/
+data/spark/
 *.db
 *.sqlite3
 

@@ -1,115 +1,251 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import NavBar from "@/components/nav/NavBar";
-import { getPortfolio, getMovers, getMarketOverview } from "@/lib/api";
+import { getMarketOverview, getMovers, getPortfolio } from "@/lib/api";
 
-const FEATURES = [
-  {label:"Portfolio",  href:"/portfolio", icon:"💼", color:"#22c55e", desc:"Track holdings, P&L, sector allocation, and position weights in real time"},
-  {label:"Risk Engine",href:"/risk",      icon:"⚡", color:"#60a5fa", desc:"VaR, CVaR, Sharpe ratio, Beta, Max Drawdown, and Monte Carlo simulation"},
-  {label:"Analytics",  href:"/analytics", icon:"📊", color:"#a78bfa", desc:"Correlation matrix, stress testing, risk history trends over time"},
-  {label:"Stocks",     href:"/stocks",    icon:"📈", color:"#fbbf24", desc:"Stock screener, side-by-side comparison, RSI, moving averages, fundamentals"},
+type Holding = {
+  ticker: string;
+  market_value: number;
+  weight: number;
+  pnl_pct: number;
+};
+
+type Portfolio = {
+  total_value: number;
+  total_pnl: number;
+  total_pnl_pct: number;
+  num_holdings: number;
+  holdings: Holding[];
+};
+
+type MarketSummary = {
+  index?: string;
+  index_change_pct?: number;
+  market_mode?: string;
+};
+
+type MarketOverview = {
+  market_summary?: MarketSummary;
+  gainers?: Array<{ ticker: string; change_pct: number }>;
+  most_active?: Array<{ ticker: string; volume: number }>;
+};
+
+type Mover = { ticker: string; price: number; change_pct: number };
+
+const AREAS = [
+  {
+    id: "portfolio",
+    eyebrow: "PORTFOLIO",
+    title: "Your positions.\nOne clear view.",
+    description: "See value, performance, and allocation together, with every holding connected to the bigger picture.",
+    href: "/portfolio",
+    link: "Learn more about Portfolio",
+  },
+  {
+    id: "risk",
+    eyebrow: "RISK ENGINE",
+    title: "Understand\nwhat’s at risk.",
+    description: "Explore Value at Risk, expected shortfall, drawdown, and Monte Carlo scenarios from one focused workspace.",
+    href: "/risk",
+    link: "Learn more about Risk",
+  },
+  {
+    id: "analytics",
+    eyebrow: "ANALYTICS",
+    title: "Find the shape\nof your exposure.",
+    description: "Compare how assets move together, test market shocks, and follow risk snapshots through time.",
+    href: "/analytics",
+    link: "Learn more about Analytics",
+  },
+  {
+    id: "stocks",
+    eyebrow: "MARKET EXPLORER",
+    title: "A sharper view\nof the market.",
+    description: "Scan active names, compare equities, and bring price action and fundamentals into the same view.",
+    href: "/stocks",
+    link: "Learn more about Stocks",
+  },
 ];
-const STACK = [{label:"Next.js 14",color:"#60a5fa"},{label:"TypeScript",color:"#60a5fa"},{label:"FastAPI",color:"#22c55e"},{label:"Python 3.11",color:"#22c55e"},{label:"NumPy",color:"#fbbf24"},{label:"SQLite",color:"#fbbf24"},{label:"yfinance",color:"#a78bfa"},{label:"Monte Carlo",color:"#f87171"},{label:"VaR/CVaR",color:"#f87171"}];
+
+function money(value = 0) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function signedPercent(value?: number) {
+  if (value === undefined || value === null) return "--";
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
 
 export default function Dashboard() {
-  const [portfolio, setPortfolio] = useState<any>(null);
-  const [movers, setMovers] = useState<any>(null);
-  const [marketOverview, setMarketOverview] = useState<any>(null);
-  const [mounted, setMounted] = useState(false);
-  useEffect(()=>{
-    setMounted(true);
-    getPortfolio().then(setPortfolio).catch(()=>{});
-    getMovers().then(setMovers).catch(()=>{});
-    getMarketOverview().then(setMarketOverview).catch(()=>{});
-  },[]);
-  const fmt = (n: number) => n>=1e9?`$${(n/1e9).toFixed(1)}B`:n>=1e6?`$${(n/1e6).toFixed(1)}M`:`$${n.toFixed(2)}`;
-  const formatSigned = (n: number|undefined) => `${n===undefined ? "--": (n >= 0 ? "+" : "")}${n===undefined ? "" : n.toFixed(2)}%`;
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [market, setMarket] = useState<MarketOverview | null>(null);
+  const [movers, setMovers] = useState<{ gainers?: Mover[]; losers?: Mover[] } | null>(null);
+
+  useEffect(() => {
+    getPortfolio().then(setPortfolio).catch(() => {});
+    getMarketOverview().then(setMarket).catch(() => {});
+    getMovers().then(setMovers).catch(() => {});
+  }, []);
+
+  const holdings = portfolio?.holdings?.slice(0, 5) ?? [];
+  const activeNames = market?.most_active?.slice(0, 4) ?? [];
+  const marketSummary = market?.market_summary;
+
   return (
-    <main style={{minHeight:"100vh"}}>
-      <NavBar/>
-      <div className="orb" style={{width:800,height:800,top:"-15%",left:"-5%",background:"radial-gradient(circle,rgba(34,197,94,0.12) 0%,transparent 65%)",filter:"blur(60px)"}}/>
-      <div className="orb" style={{width:600,height:600,top:"40%",right:"-8%",background:"radial-gradient(circle,rgba(96,165,250,0.1) 0%,transparent 65%)",filter:"blur(60px)"}}/>
-      {movers&&(
-        <div style={{borderBottom:"1px solid var(--border)",overflow:"hidden",height:32,display:"flex",alignItems:"center",position:"relative",zIndex:2}}>
-          <div style={{display:"flex",animation:"ticker 30s linear infinite",whiteSpace:"nowrap",paddingLeft:"100%",alignItems:"center"}}>
-            {[...(movers.gainers||[]),...(movers.losers||[]),...(movers.gainers||[]),...(movers.losers||[])].map((s:any,i:number)=>(
-              <span key={i} style={{display:"inline-flex",alignItems:"center",gap:8,padding:"0 24px",borderRight:"1px solid var(--border)"}}>
-                <span style={{fontSize:11,fontWeight:700,color:"var(--text-muted)"}}>{s.ticker}</span>
-                <span style={{fontSize:11,fontWeight:800}}>${s.price?.toFixed(2)}</span>
-                <span style={{fontSize:10,fontWeight:700,color:s.change_pct>=0?"var(--green)":"var(--red)"}}>{s.change_pct>=0?"+":""}{s.change_pct?.toFixed(2)}%</span>
+    <main className="home-page">
+      <NavBar variant="light" />
+      {movers && (
+        <div className="market-ticker" aria-label="Market movers">
+          <span className="ticker-label">MARKET WATCH</span>
+          <div className="ticker-track">
+            {[...(movers.gainers ?? []).slice(0, 5), ...(movers.losers ?? []).slice(0, 5)].map((mover, index) => (
+              <span className="ticker-item" key={`${mover.ticker}-${index}`}>
+                <strong>{mover.ticker}</strong>
+                <span>{money(mover.price)}</span>
+                <span className={mover.change_pct >= 0 ? "positive" : "negative"}>
+                  {signedPercent(mover.change_pct)}
+                </span>
               </span>
             ))}
           </div>
         </div>
       )}
-      <div style={{maxWidth:1020,margin:"0 auto",padding:"52px 24px 48px",position:"relative",zIndex:1}}>
-        <div style={{textAlign:"center",marginBottom:52}}>
-          <div className={mounted?"fade-up":""} style={{display:"inline-flex",alignItems:"center",gap:8,padding:"5px 16px",borderRadius:20,background:"rgba(34,197,94,0.07)",border:"1px solid rgba(34,197,94,0.14)",marginBottom:24}}>
-            <span style={{width:6,height:6,borderRadius:"50%",background:"#22c55e",display:"block",animation:"pulse-glow 2s infinite"}}/>
-            <span style={{fontSize:10,color:"rgba(34,197,94,0.9)",fontWeight:700,letterSpacing:"0.14em"}}>LIVE MARKET DATA · REAL-TIME RISK ANALYTICS</span>
-          </div>
-          <h1 className={mounted?"fade-up-2":""} style={{letterSpacing:"-0.04em",lineHeight:0.92,marginBottom:20}}>
-            <span style={{display:"block",fontSize:"clamp(52px,7vw,80px)",fontWeight:900,background:"linear-gradient(180deg,#fff 0%,rgba(255,255,255,0.5) 100%)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Market</span>
-            <span style={{display:"block",fontSize:"clamp(52px,7vw,80px)",fontWeight:900}} className="shine-text">Risk.</span>
-          </h1>
-          <p className={mounted?"fade-up-3":""} style={{fontSize:16,color:"var(--text-muted)",maxWidth:480,margin:"0 auto",lineHeight:1.8}}>
-            Portfolio analytics computing <strong style={{color:"var(--text)"}}>Value at Risk</strong>, <strong style={{color:"var(--text)"}}>Sharpe Ratio</strong>, <strong style={{color:"var(--text)"}}>Beta</strong>, and <strong style={{color:"var(--text)"}}>Monte Carlo</strong> simulations on live market data.
+
+      <section className="home-hero">
+        <div className="hero-copy">
+          <p className="eyebrow"><span className="status-dot" /> PORTFOLIO INTELLIGENCE</p>
+          <h1>Risk, made<br />understandable.</h1>
+          <p className="hero-description">
+            A clearer perspective on your portfolio, market exposure, and the scenarios that matter.
           </p>
+          <div className="hero-actions">
+            <Link className="primary-link" href="/portfolio">Explore your portfolio <span aria-hidden="true">→</span></Link>
+            <Link className="text-link" href="/risk">Explore the risk engine</Link>
+          </div>
         </div>
-        {portfolio&&(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,marginBottom:36,background:"var(--border)",borderRadius:12,overflow:"hidden",border:"1px solid var(--border)"}}>
-            {[{label:"Portfolio Value",value:fmt(portfolio.total_value||0),color:"var(--text)"},{label:"Total P&L",value:`${portfolio.total_pnl>=0?"+":""}${fmt(portfolio.total_pnl||0)}`,color:portfolio.total_pnl>=0?"var(--green)":"var(--red)"},{label:"Return",value:`${portfolio.total_pnl_pct>=0?"+":""}${(portfolio.total_pnl_pct||0).toFixed(2)}%`,color:portfolio.total_pnl_pct>=0?"var(--green)":"var(--red)"},{label:"Holdings",value:`${portfolio.num_holdings||0}`,color:"var(--blue)"}].map(({label,value,color})=>(
-              <div key={label} style={{background:"var(--bg)",padding:"18px 20px",textAlign:"center"}}>
-                <div style={{fontSize:22,fontWeight:900,color,letterSpacing:"-0.02em",marginBottom:4,lineHeight:1}}>{value}</div>
-                <div style={{fontSize:11,color:"var(--text-dim)",letterSpacing:"0.04em"}}>{label}</div>
+
+        <div className="product-preview" aria-label="Live portfolio overview">
+          <div className="preview-toolbar">
+            <div className="preview-brand"><span className="brand-mark">M</span> MarketRisk <span className="preview-divider">/</span> Portfolio</div>
+            <div className="preview-live"><span className="status-dot" /> MARKET SNAPSHOT</div>
+          </div>
+          <div className="preview-content">
+            <div className="preview-summary">
+              <div>
+                <p className="preview-label">TOTAL PORTFOLIO VALUE</p>
+                <p className="preview-value">{portfolio ? money(portfolio.total_value) : "Loading…"}</p>
+                <p className={portfolio && portfolio.total_pnl_pct < 0 ? "preview-change negative" : "preview-change positive"}>
+                  {portfolio ? `${signedPercent(portfolio.total_pnl_pct)} overall return` : "Connecting to portfolio data"}
+                </p>
               </div>
-            ))}
-          </div>
-        )}
-        {marketOverview && (
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:36}}>
-            <div className="card" style={{padding:"18px 20px"}}>
-              <div style={{fontSize:10,color:"var(--text-dim)",letterSpacing:"0.14em",fontWeight:700,textTransform:"uppercase",marginBottom:10}}>Market Mood</div>
-              <div style={{fontSize:26,fontWeight:900,lineHeight:1,marginBottom:6}}>{marketOverview.market_summary?.market_mode}</div>
-              <div style={{fontSize:12,color:"var(--text-muted)"}}>{marketOverview.market_summary?.index} {formatSigned(marketOverview.market_summary?.index_change_pct)}</div>
-            </div>
-            <div className="card" style={{padding:"18px 20px"}}>
-              <div style={{fontSize:10,color:"var(--text-dim)",letterSpacing:"0.14em",fontWeight:700,textTransform:"uppercase",marginBottom:10}}>Top Gainers</div>
-              <div style={{display:"grid",gap:6}}>{(marketOverview.gainers||[]).slice(0,3).map((s:any)=>(<div key={s.ticker} style={{display:"flex",justifyContent:"space-between",fontSize:12}}><span>{s.ticker}</span><span style={{color:"var(--green)"}}>{s.change_pct?.toFixed(2)}%</span></div>))}</div>
-            </div>
-            <div className="card" style={{padding:"18px 20px"}}>
-              <div style={{fontSize:10,color:"var(--text-dim)",letterSpacing:"0.14em",fontWeight:700,textTransform:"uppercase",marginBottom:10}}>Active Names</div>
-              <div style={{display:"grid",gap:6}}>{(marketOverview.most_active||[]).slice(0,3).map((s:any)=>(<div key={s.ticker} style={{display:"flex",justifyContent:"space-between",fontSize:12}}><span>{s.ticker}</span><span style={{color:"var(--text-muted)"}}>{(s.volume/1e6).toFixed(1)}M</span></div>))}</div>
-            </div>
-          </div>
-        )}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:36}}>
-          {FEATURES.map(f=>(
-            <Link key={f.href} href={f.href} style={{textDecoration:"none"}}>
-              <div className="card" style={{padding:"24px",cursor:"pointer",height:"100%",display:"flex",flexDirection:"column",gap:14}}
-                onMouseEnter={e=>{const el=e.currentTarget as HTMLElement;el.style.borderColor=`${f.color}40`;el.style.transform="translateY(-3px)";el.style.boxShadow=`0 12px 40px ${f.color}12`;}}
-                onMouseLeave={e=>{const el=e.currentTarget as HTMLElement;el.style.borderColor="var(--border)";el.style.transform="translateY(0)";el.style.boxShadow="none";}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <span style={{fontSize:28}}>{f.icon}</span>
-                  <span style={{fontSize:12,color:`${f.color}50`,fontWeight:700}}>→</span>
-                </div>
-                <div>
-                  <div style={{color:"var(--text)",fontWeight:800,fontSize:16,marginBottom:6}}>{f.label}</div>
-                  <div style={{color:"var(--text-muted)",fontSize:13,lineHeight:1.65}}>{f.desc}</div>
-                </div>
-                <div style={{height:1,background:`linear-gradient(90deg,${f.color}30,transparent)`,marginTop:"auto"}}/>
+              <div className="market-summary">
+                <span className="preview-label">{marketSummary?.index ?? "MARKET"}</span>
+                <strong>{marketSummary?.market_mode ?? "Market overview"}</strong>
+                <span className={marketSummary && (marketSummary.index_change_pct ?? 0) < 0 ? "negative" : "positive"}>
+                  {signedPercent(marketSummary?.index_change_pct)}
+                </span>
               </div>
-            </Link>
-          ))}
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:12,alignItems:"center"}}>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center"}}>
-            {STACK.map(t=>(<span key={t.label} style={{fontSize:10,padding:"4px 11px",borderRadius:20,background:`${t.color}08`,border:`1px solid ${t.color}18`,color:`${t.color}70`,fontWeight:700,letterSpacing:"0.05em"}}>{t.label}</span>))}
+            </div>
+            <div className="holdings-heading"><span>Largest positions</span><span>{portfolio?.num_holdings ?? "--"} holdings</span></div>
+            <div className="holding-list">
+              {holdings.length ? holdings.map((holding, index) => (
+                <div className="holding-row" key={holding.ticker}>
+                  <span className={`holding-symbol symbol-${index}`}>{holding.ticker.slice(0, 1)}</span>
+                  <strong>{holding.ticker}</strong>
+                  <span className="holding-value">{money(holding.market_value)}</span>
+                  <span className="holding-weight">{holding.weight.toFixed(1)}%</span>
+                  <span className={holding.pnl_pct >= 0 ? "positive" : "negative"}>{signedPercent(holding.pnl_pct)}</span>
+                  <span className="weight-track"><span style={{ width: `${Math.max(holding.weight, 2)}%` }} /></span>
+                </div>
+              )) : <p className="empty-preview">Your portfolio snapshot will appear here.</p>}
+            </div>
           </div>
-          <div style={{fontSize:10,color:"rgba(255,255,255,0.1)",letterSpacing:"0.1em",fontWeight:700}}>BUILT BY KESHAV BHOOVARAGAN · FINANCIAL RISK ANALYTICS</div>
+          <div className="preview-footer"><span>Portfolio overview</span><span>Updated from your local API</span></div>
         </div>
-      </div>
+      </section>
+
+      <section className="market-strip" aria-label="Market snapshot">
+        <div><span className="strip-label">MARKET MODE</span><strong>{marketSummary?.market_mode ?? "—"}</strong></div>
+        <div><span className="strip-label">REFERENCE INDEX</span><strong>{marketSummary?.index ?? "—"}</strong></div>
+        <div><span className="strip-label">ACTIVE NAMES</span><strong>{activeNames.map((name) => name.ticker).join(" · ") || "—"}</strong></div>
+        <Link href="/stocks">Open market explorer <span aria-hidden="true">→</span></Link>
+      </section>
+
+      {AREAS.map((area, index) => (
+        <section className={`story-section story-${area.id}`} id={area.id} key={area.id}>
+          <div className="story-inner">
+            <div className="story-copy">
+              <p className="eyebrow">{area.eyebrow}</p>
+              <h2>{area.title}</h2>
+              <p>{area.description}</p>
+              <Link className="learn-link" href={area.href}>{area.link} <span aria-hidden="true">→</span></Link>
+            </div>
+            <div className={`story-art art-${area.id}`} aria-hidden="true">
+              {area.id === "portfolio" && (
+                <div className="allocation-visual">
+                  <div className="visual-topline"><span>Portfolio allocation</span><span>Today</span></div>
+                  {holdings.slice(0, 4).map((holding, holdingIndex) => (
+                    <div className="allocation-row" key={holding.ticker}>
+                      <span>{holding.ticker}</span>
+                      <div className="allocation-bar"><span style={{ width: `${Math.max(holding.weight, 3)}%` }} /></div>
+                      <strong>{holding.weight.toFixed(1)}%</strong>
+                    </div>
+                  ))}
+                  {!holdings.length && <div className="allocation-empty">Allocation appears when portfolio data is available.</div>}
+                  <div className="allocation-total"><span>{portfolio?.num_holdings ?? "--"} positions</span><strong>{portfolio ? money(portfolio.total_value) : "Portfolio value"}</strong></div>
+                </div>
+              )}
+              {area.id === "risk" && (
+                <div className="risk-visual">
+                  <div className="risk-orbit orbit-one" /><div className="risk-orbit orbit-two" />
+                  <div className="risk-core"><span>RISK</span><strong>01</strong><small>PORTFOLIO</small></div>
+                  <div className="risk-chip chip-var">VaR <strong>95%</strong></div>
+                  <div className="risk-chip chip-cvar">CVaR <strong>Tail loss</strong></div>
+                  <div className="risk-chip chip-mc">Monte Carlo <strong>Scenarios</strong></div>
+                </div>
+              )}
+              {area.id === "analytics" && (
+                <div className="matrix-visual">
+                  <div className="matrix-head"><span>Asset relationships</span><span>Correlation</span></div>
+                  <div className="matrix-labels"><span>AAPL</span><span>MSFT</span><span>NVDA</span><span>SPY</span></div>
+                  <div className="matrix-grid">
+                    {[0.9,0.7,0.4,0.8,0.7,0.9,0.5,0.8,0.4,0.5,0.9,0.6,0.8,0.8,0.6,0.9].map((value, cell) => (
+                      <span key={cell} style={{ opacity: 0.18 + value * 0.72 }} />
+                    ))}
+                  </div>
+                  <div className="matrix-caption">Correlation · stress testing · risk history</div>
+                </div>
+              )}
+              {area.id === "stocks" && (
+                <div className="stocks-visual">
+                  <div className="visual-topline"><span>Market activity</span><span>Today</span></div>
+                  {(activeNames.length ? activeNames : [{ ticker: "Market", volume: 0 }]).map((name, stockIndex) => (
+                    <div className="active-row" key={name.ticker}>
+                      <span className={`stock-index index-${stockIndex}`}>0{stockIndex + 1}</span>
+                      <strong>{name.ticker}</strong>
+                      <span>{name.volume ? `${(name.volume / 1_000_000).toFixed(1)}M shares` : "Live market feed"}</span>
+                      <span className="row-arrow">↗</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          {index < AREAS.length - 1 && <div className="story-rule" />}
+        </section>
+      ))}
+
+      <footer className="home-footer">
+        <Link href="/" className="footer-brand">MarketRisk</Link>
+        <span>Financial risk analytics</span>
+        <div><Link href="/portfolio">Portfolio</Link><Link href="/risk">Risk</Link><Link href="/analytics">Analytics</Link><Link href="/stocks">Stocks</Link></div>
+      </footer>
     </main>
   );
 }

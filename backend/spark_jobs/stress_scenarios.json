@@ -1,0 +1,16 @@
+{
+  "market_correction": {
+    "*": -0.2
+  },
+  "severe_bear_market": {
+    "*": -0.35
+  },
+  "technology_selloff": {
+    "*": -0.12,
+    "AAPL": -0.3,
+    "MSFT": -0.3,
+    "NVDA": -0.4,
+    "GOOGL": -0.3,
+    "META": -0.35
+  }
+}

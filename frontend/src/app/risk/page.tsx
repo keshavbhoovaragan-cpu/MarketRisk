@@ -20,18 +20,18 @@ export default function RiskPage() {
     </div>
   );
   return (
-    <main style={{minHeight:"100vh"}}><NavBar/>
+    <main className="workspace-page" style={{minHeight:"100vh"}}><NavBar/>
       <div className="section">
         <div style={{marginBottom:28}}>
           <div style={{fontSize:10,color:"rgba(96,165,250,0.6)",letterSpacing:"0.2em",fontWeight:700,marginBottom:8}}>RISK ANALYTICS ENGINE</div>
           <h1 style={{fontSize:36,fontWeight:900,lineHeight:1,letterSpacing:"-0.025em",marginBottom:8,background:"linear-gradient(135deg,#60a5fa,#a78bfa)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Risk Dashboard</h1>
           <p style={{color:"var(--text-muted)",fontSize:14}}>VaR · CVaR · Sharpe · Beta · Max Drawdown · Monte Carlo · Stress Testing</p>
         </div>
-        <div style={{display:"flex",gap:4,marginBottom:24,background:"rgba(255,255,255,0.03)",border:"1px solid var(--border)",borderRadius:10,padding:4,width:"fit-content"}}>
-          {(["overview","holdings","stress","monte-carlo"] as const).map(t=>(<button key={t} onClick={()=>setTab(t)} style={{padding:"7px 16px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",border:"none",textTransform:"capitalize",background:tab===t?"rgba(96,165,250,0.12)":"transparent",color:tab===t?"#60a5fa":"var(--text-muted)",fontFamily:"inherit",letterSpacing:"0.03em"}}>{t.replace("-"," ")}</button>))}
+        <div className="workspace-tabs">
+          {(["overview","holdings","stress","monte-carlo"] as const).map(t=>(<button className={`workspace-tab${tab===t?" is-active":""}`} key={t} onClick={()=>setTab(t)}>{t.replace("-"," ")}</button>))}
         </div>
         {loading?(<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>{Array.from({length:8}).map((_,i)=>(<div key={i} className="skeleton" style={{height:120,borderRadius:14}}/>))}</div>)
-        :!risk?(<div style={{textAlign:"center",padding:80,color:"var(--text-dim)"}}><div style={{fontSize:32,marginBottom:12}}>⚠️</div><div>Could not load risk data. Make sure the backend is running on port 8001.</div></div>)
+        :!risk?(<div style={{textAlign:"center",padding:80,color:"var(--text-dim)"}}><div style={{fontSize:32,marginBottom:12}}>⚠️</div><div>Could not load risk data. Make sure the backend is running on port 8002.</div></div>)
         :tab==="overview"?(
           <>
             <div style={{background:`${gc(risk.risk_grade)}10`,border:`1px solid ${gc(risk.risk_grade)}30`,borderRadius:16,padding:"20px 24px",marginBottom:20,display:"flex",alignItems:"center",gap:20}}>

@@ -2,13 +2,10 @@
 
 import argparse
 from pathlib import Path
+import re
 
 
-REPLACEMENTS = {
-    "marketrisk-api:latest": "marketrisk-api:{tag}",
-    "marketrisk-frontend:latest": "marketrisk-frontend:{tag}",
-    "marketrisk-spark-job:latest": "marketrisk-spark-job:{tag}",
-}
+IMAGE_NAMES = ("marketrisk-api", "marketrisk-frontend", "marketrisk-spark-job")
 
 
 def parse_args() -> argparse.Namespace:
@@ -28,10 +25,12 @@ def update_file(path: Path, tag: str, prefix: str) -> bool:
     text = path.read_text()
     original = text
 
-    for old_suffix, new_suffix in REPLACEMENTS.items():
-        old = f"image: {old_suffix}"
-        new = f"image: {prefix}/{new_suffix.format(tag=tag)}"
-        text = text.replace(old, new)
+    for image_name in IMAGE_NAMES:
+        pattern = re.compile(
+            rf"(?m)^(\s*image:\s*)(?:{re.escape(image_name)}|"
+            rf"{re.escape(prefix)}/{re.escape(image_name)})(?::[^\s]+)?\s*$"
+        )
+        text = pattern.sub(rf"\g<1>{prefix}/{image_name}:{tag}", text)
 
     if text == original:
         return False
@@ -55,7 +54,7 @@ def main() -> int:
         else:
             print(f"No change for {path}")
 
-    return 0 if changed or True else 1
+    return 0
 
 
 if __name__ == "__main__":

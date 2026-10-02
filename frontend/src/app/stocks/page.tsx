@@ -18,15 +18,15 @@ export default function StocksPage() {
   const sc=(s:string)=>s==="BUY"?"#22c55e":s==="SELL"?"#f87171":"#fbbf24";
   const rc=(v:number)=>v<1.5?"#22c55e":v<2.5?"#fbbf24":"#f87171";
   return (
-    <main style={{minHeight:"100vh"}}><NavBar/>
+    <main className="workspace-page" style={{minHeight:"100vh"}}><NavBar/>
       <div className="section">
         <div style={{marginBottom:28}}>
           <div style={{fontSize:10,color:"rgba(251,191,36,0.6)",letterSpacing:"0.2em",fontWeight:700,marginBottom:8}}>MARKET INTELLIGENCE</div>
           <h1 style={{fontSize:36,fontWeight:900,lineHeight:1,letterSpacing:"-0.025em",marginBottom:8,background:"linear-gradient(135deg,#fbbf24,#f59e0b)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>Stocks</h1>
           <p style={{color:"var(--text-muted)",fontSize:14}}>Market screener · Stock comparison · RSI · Moving averages · Fundamentals</p>
         </div>
-        <div style={{display:"flex",gap:4,marginBottom:24,background:"rgba(255,255,255,0.03)",border:"1px solid var(--border)",borderRadius:10,padding:4,width:"fit-content"}}>
-          {(["screener","compare","detail"] as const).map(t=>(<button key={t} onClick={()=>setTab(t)} style={{padding:"7px 18px",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",border:"none",textTransform:"capitalize",background:tab===t?"rgba(251,191,36,0.12)":"transparent",color:tab===t?"#fbbf24":"var(--text-muted)",fontFamily:"inherit"}}>{t}</button>))}
+        <div className="workspace-tabs">
+          {(["screener","compare","detail"] as const).map(t=>(<button className={`workspace-tab${tab===t?" is-active":""}`} key={t} onClick={()=>setTab(t)}>{t}</button>))}
         </div>
         {tab==="screener"&&(
           <div className="card" style={{overflow:"hidden"}}>

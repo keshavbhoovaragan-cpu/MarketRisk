@@ -1,7 +1,12 @@
+import os
+
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import portfolio, market, risk, stocks
 from app.services.database import init_db
+
+PORT = int(os.getenv("PORT", "8002"))
 
 app = FastAPI(title="MarketRisk API", version="1.0.0",
     description="Financial Risk Analytics — VaR, Sharpe, Beta, Monte Carlo")
@@ -23,3 +28,7 @@ async def health():
     h = conn.execute("SELECT COUNT(*) FROM holdings WHERE portfolio_id=1").fetchone()[0]
     conn.close()
     return {"status":"ok","version":"1.0.0","holdings":h,"stack":["FastAPI","Python","yfinance","NumPy","SQLite"]}
+
+
+if __name__ == "__main__":
+    uvicorn.run("app.main:app", host="0.0.0.0", port=PORT, reload=False)

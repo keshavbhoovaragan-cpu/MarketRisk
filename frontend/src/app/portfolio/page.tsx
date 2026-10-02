@@ -19,7 +19,7 @@ export default function PortfolioPage() {
   const fm = (n:number) => `$${Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
   const pc = (n:number) => n>=0?"var(--green)":"var(--red)";
   return (
-    <main style={{minHeight:"100vh"}}><NavBar/>
+    <main className="workspace-page" style={{minHeight:"100vh"}}><NavBar/>
       <div className="section">
         <div style={{marginBottom:28}}>
           <div style={{fontSize:10,color:"rgba(34,197,94,0.6)",letterSpacing:"0.2em",fontWeight:700,marginBottom:8}}>LIVE PORTFOLIO</div>

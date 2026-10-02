@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: marketrisk-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/keshavbhoovaragan-cpu/MarketRisk.git
+    targetRevision: HEAD
+    path: infra/k8s/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: market-risk-prod
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

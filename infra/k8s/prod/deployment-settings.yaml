@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: market-risk
+spec:
+  replicas: 2
+  template:
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-credentials
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: market-risk
+spec:
+  template:
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-credentials

@@ -1,0 +1,62 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      PORT: "8002"
+      MARKETRISK_DATA_DIR: /app/data
+      DB_PATH: /app/data/marketrisk.db
+    ports:
+      - "8002:8002"
+    volumes:
+      - sqlite-data:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - from urllib.request import urlopen; urlopen('http://127.0.0.1:8002/api/health', timeout=3)
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8002
+    ports:
+      - "3002:3002"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  spark-job:
+    profiles:
+      - batch
+    build:
+      context: ./backend
+      dockerfile: spark_jobs/Dockerfile
+    command:
+      - spark-submit
+      - /opt/marketrisk/spark_jobs/risk_batch.py
+      - --source
+      - yfinance
+      - --tickers
+      - AAPL,MSFT,NVDA
+      - --period
+      - 5y
+      - --holdings
+      - /opt/marketrisk/spark_jobs/example_holdings.csv
+      - --raw-output
+      - /data/spark/raw_prices
+      - --results-output
+      - /data/spark/risk_results
+    volumes:
+      - ./data:/data
+
+volumes:
+  sqlite-data:

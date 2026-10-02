@@ -84,7 +84,7 @@ flowchart LR
 
 ### ArgoCD app-of-apps pattern
 
-The GitOps layer should live in a separate infra repository, not in the application repo. The root application points at a folder such as `apps/`, and child applications reconcile the dev and prod overlays. This pattern creates a clean dependency order: cluster bootstrap, then shared services (MinIO/Postgres), then app workloads and batch jobs. Sync waves help keep the order explicit and avoid ArgoCD trying to deploy the Spark job before the namespace, RBAC, or storage layer exists.
+For this learning deployment, the GitOps layer is co-located in this repository under `infra/gitops/apps`; a larger team can move it to a dedicated infra repository to separate ownership. The root application reads the child Application manifests, which reconcile the dev and gated prod overlays. This pattern creates a clean dependency order: cluster bootstrap, then shared services (MinIO/Postgres), then app workloads and batch jobs. Sync waves help keep the order explicit and avoid ArgoCD trying to deploy the Spark job before the namespace, RBAC, or storage layer exists.
 
 ### Why this is the correct structure
 

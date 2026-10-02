@@ -1,10 +1,10 @@
 # ArgoCD GitOps setup
 
-This directory contains the bootstrapping resources for the GitOps layer of the MarketRisk project.
+This directory contains the ArgoCD root Application bootstrap. The app-of-apps manifests currently live in this application repository for the learning setup; they can move to a dedicated infra repository later.
 
 ## Root application
 
-The file `app-of-apps/root-app.yaml` is the ArgoCD Application resource that points at the infra repository's app-of-apps tree. In a real setup, the `repoURL` should point to a dedicated infrastructure repo such as `https://github.com/<user>/marketrisk-infra.git`.
+The file `app-of-apps/root-app.yaml` points at `infra/gitops/apps` in the MarketRisk repository. ArgoCD discovers the child Applications from that directory.
 
 ## Intended structure
 
@@ -13,11 +13,17 @@ infra/
   argocd/
     app-of-apps/
       root-app.yaml
-    manifests/
+  gitops/
+    apps/
       market-risk-dev.yaml
+      market-risk-prod.yaml
+  k8s/
+    base/
+    dev/
+    prod/
 ```
 
-The root app should recurse into an `apps/` directory in the infra repo, where separate child Applications manage:
+The root app recurses into `infra/gitops/apps`, where child Applications manage:
 
 - cluster bootstrap and namespaces
 - MinIO / Postgres / shared platform services
@@ -25,3 +31,5 @@ The root app should recurse into an `apps/` directory in the infra repo, where s
 - the SparkOperator job and any scheduled batch workloads
 
 This keeps the deployment order explicit and lets ArgoCD self-heal drift back to Git.
+
+The production child Application has automated sync disabled. Its overlay is only a reviewable promotion template: GHCR tags must be replaced with a verified immutable SHA, the pull secret must be provisioned securely, and the API must be migrated from SQLite before anyone manually syncs it.

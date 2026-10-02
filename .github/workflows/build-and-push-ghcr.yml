@@ -46,7 +46,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./backend
-          file: ./backend/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
@@ -56,7 +55,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
-          file: ./frontend/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
@@ -66,7 +64,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./backend
-          file: ./backend/spark_jobs/Dockerfile
+          file: ./spark_jobs/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.SPARK_IMAGE }}:${{ github.sha }}
@@ -77,13 +75,13 @@ jobs:
           python scripts/update-image-tags.py \
             --tag "${{ github.sha }}" \
             --prefix "${{ env.REGISTRY }}/${{ env.OWNER }}" \
-            --files infra/k8s/dev/app.yaml infra/k8s/dev/spark-application.yaml infra/k8s/dev/scheduled-spark-application.yaml
+            --files infra/k8s/base/app.yaml infra/k8s/dev/spark-application.yaml infra/k8s/dev/scheduled-spark-application.yaml
 
       - name: Commit manifest tag updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add infra/k8s/dev/app.yaml infra/k8s/dev/spark-application.yaml infra/k8s/dev/scheduled-spark-application.yaml
+          git add infra/k8s/base/app.yaml infra/k8s/dev/spark-application.yaml infra/k8s/dev/scheduled-spark-application.yaml
           if ! git diff --cached --quiet; then
             git commit -m "Update Kubernetes image tags for GHCR"
             git pull --rebase origin "${GITHUB_REF_NAME}"
