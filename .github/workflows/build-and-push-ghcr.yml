@@ -64,7 +64,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./backend
-          file: ./spark_jobs/Dockerfile
+          file: ./backend/spark_jobs/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.SPARK_IMAGE }}:${{ github.sha }}
