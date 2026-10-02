@@ -8,7 +8,10 @@ export default function RiskPage() {
   const [stress, setStress] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"overview"|"holdings"|"stress"|"monte-carlo">("overview");
-  useEffect(()=>{ setLoading(true); Promise.all([getPortfolioRisk().then(setRisk).catch(()=>{}),getStressTest().then(setStress).catch(()=>{})]).finally(()=>setLoading(false)); },[]);
+  const [portfolioId, setPortfolioId] = useState<number | undefined>(undefined);
+  const [portfolioReady, setPortfolioReady] = useState(false);
+  useEffect(()=>{ const value = Number(new URLSearchParams(window.location.search).get("portfolio_id")); setPortfolioId(Number.isInteger(value) && value > 0 ? value : undefined); setPortfolioReady(true); },[]);
+  useEffect(()=>{ if(!portfolioReady)return; setLoading(true); Promise.all([getPortfolioRisk(portfolioId).then(setRisk).catch(()=>{}),getStressTest(portfolioId).then(setStress).catch(()=>{})]).finally(()=>setLoading(false)); },[portfolioId,portfolioReady]);
   const gc=(g:string)=>({A:"#22c55e",B:"#86efac",C:"#fbbf24",D:"#fb923c",F:"#f87171"}[g]||"#9ca3af");
   const rc=(v:number)=>v<1.5?"#22c55e":v<2.5?"#fbbf24":"#f87171";
   const M=({label,value,sub,color,explain}:{label:string,value:any,sub?:string,color?:string,explain?:string})=>(
@@ -31,7 +34,7 @@ export default function RiskPage() {
           {(["overview","holdings","stress","monte-carlo"] as const).map(t=>(<button className={`workspace-tab${tab===t?" is-active":""}`} key={t} onClick={()=>setTab(t)}>{t.replace("-"," ")}</button>))}
         </div>
         {loading?(<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>{Array.from({length:8}).map((_,i)=>(<div key={i} className="skeleton" style={{height:120,borderRadius:14}}/>))}</div>)
-        :!risk?(<div style={{textAlign:"center",padding:80,color:"var(--text-dim)"}}><div style={{fontSize:32,marginBottom:12}}>⚠️</div><div>Could not load risk data. Make sure the backend is running on port 8002.</div></div>)
+        :!risk?(<div className="risk-empty-state"><strong>Your risk view is ready when your portfolio is.</strong><p>Add a paper position first. Risk measures use market history and can’t be calculated for an empty portfolio.</p><a href="/portfolio">Open your portfolio →</a></div>)
         :tab==="overview"?(
           <>
             <div style={{background:`${gc(risk.risk_grade)}10`,border:`1px solid ${gc(risk.risk_grade)}30`,borderRadius:16,padding:"20px 24px",marginBottom:20,display:"flex",alignItems:"center",gap:20}}>
@@ -70,7 +73,7 @@ export default function RiskPage() {
           </div>
         ):tab==="stress"?(
           <div>
-            <div style={{fontSize:13,color:"var(--text-muted)",marginBottom:20,lineHeight:1.7}}>How would your portfolio have performed during major historical market crashes?</div>
+            <div style={{fontSize:13,color:"var(--text-muted)",marginBottom:20,lineHeight:1.7}}>Illustrative market-wide shocks scaled with a fixed portfolio multiplier. This is not a replay of your holdings during historical events.</div>
             <div style={{display:"grid",gap:10}}>{(stress?.stress_tests||[]).map((s:any)=>(
               <div key={s.scenario} className="card" style={{padding:"18px 24px",display:"grid",gridTemplateColumns:"1fr auto auto auto",alignItems:"center",gap:24}}>
                 <div><div style={{fontWeight:700,fontSize:15,marginBottom:4}}>{s.scenario}</div><div style={{fontSize:12,color:"var(--text-dim)"}}>Market fell {s.market_drop_pct}% · Portfolio est. {s.portfolio_drop_pct}%</div></div>
@@ -89,7 +92,7 @@ export default function RiskPage() {
             </div>)}
             <div className="card" style={{padding:"20px 24px"}}>
               <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>About Monte Carlo VaR</div>
-              <p style={{color:"var(--text-muted)",fontSize:13,lineHeight:1.8}}>Generates {risk.monte_carlo?.simulations?.toLocaleString()} random future return scenarios based on historical mean and standard deviation. Same methodology used by investment banks for regulatory capital calculations under Basel III.</p>
+              <p style={{color:"var(--text-muted)",fontSize:13,lineHeight:1.8}}>This learning model generates {risk.monte_carlo?.simulations?.toLocaleString()} seeded normal-return scenarios using historical mean and standard deviation. It is sensitive to the sample and distribution assumptions and does not represent a regulatory capital model.</p>
             </div>
           </div>
         )}

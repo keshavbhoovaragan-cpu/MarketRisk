@@ -3,19 +3,29 @@ import os
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import portfolio, market, risk, stocks
+from app.api.routes import auth, portfolio, market, risk, stocks
 from app.services.database import init_db
 
 PORT = int(os.getenv("PORT", "8002"))
 
 app = FastAPI(title="MarketRisk API", version="1.0.0",
     description="Financial Risk Analytics — VaR, Sharpe, Beta, Monte Carlo")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+cors_origins = [origin.strip() for origin in os.getenv(
+    "CORS_ORIGINS", "http://localhost:3002,http://127.0.0.1:3002"
+).split(",") if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type"],
+)
 
 @app.on_event("startup")
 async def startup():
     init_db()
 
+app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(portfolio.router, prefix="/api/portfolio", tags=["portfolio"])
 app.include_router(market.router,    prefix="/api/market",    tags=["market"])
 app.include_router(risk.router,      prefix="/api/risk",      tags=["risk"])

@@ -7,7 +7,10 @@ export default function AnalyticsPage() {
   const [risk, setRisk] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  useEffect(()=>{ Promise.all([getPortfolioRisk().then(setRisk).catch(()=>{}),getRiskHistory().then(r=>setHistory(r.snapshots||[])).catch(()=>{})]).finally(()=>setLoading(false)); },[]);
+  const [portfolioId, setPortfolioId] = useState<number | undefined>(undefined);
+  const [portfolioReady, setPortfolioReady] = useState(false);
+  useEffect(()=>{ const value = Number(new URLSearchParams(window.location.search).get("portfolio_id")); setPortfolioId(Number.isInteger(value) && value > 0 ? value : undefined); setPortfolioReady(true); },[]);
+  useEffect(()=>{ if(!portfolioReady)return; Promise.all([getPortfolioRisk(portfolioId).then(setRisk).catch(()=>{}),getRiskHistory(portfolioId).then(r=>setHistory(r.snapshots||[])).catch(()=>{})]).finally(()=>setLoading(false)); },[portfolioId,portfolioReady]);
   return (
     <main className="workspace-page" style={{minHeight:"100vh"}}><NavBar/>
       <div className="section">
@@ -18,6 +21,7 @@ export default function AnalyticsPage() {
         </div>
         {loading?(<div style={{display:"grid",gap:16}}>{Array.from({length:3}).map((_,i)=>(<div key={i} className="skeleton" style={{height:200,borderRadius:14}}/>))}</div>):(
           <>
+            {!risk && <div className="analytics-empty-state"><strong>Your analytics appear after you add a portfolio position.</strong><p>Correlation, risk history, and portfolio measures need holdings and available market history.</p></div>}
             {risk?.correlation?.tickers&&(
               <div className="card" style={{overflow:"hidden",marginBottom:16}}>
                 <div className="table-header"><span style={{fontWeight:700,fontSize:13}}>Correlation Matrix</span><span style={{fontSize:10,color:"var(--text-dim)"}}>1.0 = perfectly correlated · -1 = inverse</span></div>
@@ -42,7 +46,7 @@ export default function AnalyticsPage() {
               </div>
             )}
             <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
-              {[{title:"Value at Risk (VaR)",color:"#60a5fa",desc:"Maximum expected loss at a given confidence level. VaR(95%, 1-day) = 2% means 5% chance of losing more than 2% in a single trading day. Used by banks for Basel III regulatory capital."},{title:"Sharpe Ratio",color:"#22c55e",desc:"Risk-adjusted returns: (Return - Risk Free Rate) / Volatility. Above 2.0 is excellent. Below 0 means T-bills outperform on a risk-adjusted basis."},{title:"Beta",color:"#a78bfa",desc:"Sensitivity to market movements vs S&P 500. Beta=1.5 means if market falls 10%, portfolio typically falls 15%. Beta<0 moves opposite to the market."},{title:"Monte Carlo",color:"#fbbf24",desc:"Generates thousands of random future return paths. Same methodology used by Goldman Sachs and JP Morgan for regulatory risk management."}].map(({title,color,desc})=>(<div key={title} className="card" style={{padding:"20px 22px"}}><div style={{fontWeight:800,fontSize:14,marginBottom:10,color}}>{title}</div><p style={{color:"var(--text-muted)",fontSize:13,lineHeight:1.75}}>{desc}</p></div>))}
+              {[{title:"Value at Risk (VaR)",color:"#60a5fa",desc:"A loss threshold at a stated confidence level and horizon. A 1-day VaR of 2% at 95% confidence means the model estimates a 5% chance of a larger loss for that day; it does not bound the size of a tail loss."},{title:"Sharpe Ratio",color:"#22c55e",desc:"A historical risk-adjusted return measure: excess return divided by return volatility. It depends on the selected period, annualization, and risk-free-rate assumptions."},{title:"Beta",color:"#a78bfa",desc:"Historical sensitivity to a selected market benchmark. A beta estimate is sample-dependent and does not predict that the portfolio will move by the same multiple in the future."},{title:"Monte Carlo",color:"#fbbf24",desc:"This project's baseline simulates seeded normal returns from historical mean and standard deviation. It is an educational model, not a regulatory capital calculation or a forecast."}].map(({title,color,desc})=>(<div key={title} className="card" style={{padding:"20px 22px"}}><div style={{fontWeight:800,fontSize:14,marginBottom:10,color}}>{title}</div><p style={{color:"var(--text-muted)",fontSize:13,lineHeight:1.75}}>{desc}</p></div>))}
             </div>
           </>
         )}

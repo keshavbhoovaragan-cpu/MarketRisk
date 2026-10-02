@@ -57,11 +57,32 @@ The app will be available at:
 
 ## Features
 
-- Portfolio dashboard with holdings and P&L
+- Authenticated accounts with private portfolios and per-user watchlists
+- Multiple paper portfolios with virtual starting cash, simulated buy/sell orders, and an immutable trade ledger
+- Portfolio dashboard with holdings, cash, realized/unrealized context, quote provenance, and risk snapshots
+- Market workspace with personal watchlist, movers, screener, comparisons, and stock details
+- Beginner, intermediate, and advanced investing/risk lessons
+- Explainable portfolio coach; optional OpenAI-compatible educational enrichment when `OPENAI_API_KEY` is configured
 - Stress testing and VaR/CVaR analysis
 - Correlation matrix and risk history snapshots
 - Stock screener and equity comparison views
-- Live market ticker and active movers
+
+## Paper investing and quote quality
+
+Create an account at `/login`. New accounts receive a private paper portfolio with $100,000 virtual cash. Create additional portfolios, submit simulated market-price buys/sells, review the trade ledger, manage a personal watchlist, and choose a learning level/risk profile. Orders never reach a brokerage or exchange.
+
+Quotes currently come from Yahoo Finance through `yfinance`. The API refreshes its local quote cache every 60 seconds by default (`MARKET_CACHE_TTL_SECONDS` can override this), and returns both the provider bar timestamp and local retrieval time. This is **not a guaranteed real-time feed**; data can be delayed, stale outside market hours, rate-limited, or unavailable. Missing prices make marked equity explicitly incomplete rather than silently treating the holding as worth zero. For reliable minute-level or exchange-licensed data, configure a commercial provider with an appropriate entitlement.
+
+The portfolio coach always provides deterministic, explainable observations. To enable optional LLM-generated educational explanations, set `OPENAI_API_KEY` and optionally `OPENAI_MODEL` in the backend environment. The key stays server-side; the coach receives portfolio metrics without account email and is prompted not to make trade instructions or invent market facts. Without a configured key it reports that generative AI is disconnected and uses only the explainable rules. Coach output is educational, not personal financial advice.
+
+Authentication uses salted PBKDF2 password hashes and revocable server-side sessions in an HttpOnly cookie. Set `SESSION_SECRET` to a stable secret in deployed environments and set `SESSION_COOKIE_SECURE=true` behind HTTPS. Configure `CORS_ORIGINS` to the exact frontend origins; the local default is `http://localhost:3002,http://127.0.0.1:3002`.
+
+Run the backend integration suite in an environment with backend requirements installed:
+
+```bash
+cd backend
+python -m unittest discover -s tests -v
+```
 
 ## Local Spark risk batch (Phase 1)
 
@@ -101,11 +122,13 @@ Development manifests under `infra/k8s/dev` deploy the API, frontend, MinIO, and
 
 ArgoCD is installed in the local k3d cluster. Its root app watches `infra/gitops/apps`, which defines the dev app and a manually gated production child app. The production overlay is a template, not a production-ready deployment: PostgreSQL migration, production credentials, verified GHCR images, ingress/TLS, and operational policies remain prerequisites.
 
-The GHCR workflow is in `.github/workflows/build-and-push-ghcr.yml`. Earlier runs failed because Dockerfile paths were resolved outside their build contexts. The corrected context-relative paths pass local Docker builds, but GitHub-hosted publishing still needs a successful run after these changes are committed.
+The GHCR workflow is in `.github/workflows/build-and-push-ghcr.yml`. A successful run built and published the backend, frontend, and Spark images and committed immutable tags to the dev manifests. The local repository should be fast-forwarded to include the workflow-generated manifest-tag commit before making further release commits.
 
 ## Current limitations
 
 - The API still uses SQLite; PostgreSQL persistence and Spark-result ingestion remain future work.
+- Paper portfolios are supported; real-money broker connections and order execution are not implemented.
+- Yahoo/yfinance is a learning/demo feed without a real-time service guarantee.
+- The AI coach uses transparent rules unless an `OPENAI_API_KEY` is configured; no AI key is included in the repository.
 - The scheduled sample Spark job is suspended until credential management and repeatable input handling are in place.
-- GHCR build/publish automation must be confirmed with a successful GitHub Actions run.
 - A repeatable benchmark harness and performance comparison are not implemented yet.

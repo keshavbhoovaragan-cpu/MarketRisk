@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-const NAV = [{label:"Dashboard",href:"/"},{label:"Portfolio",href:"/portfolio"},{label:"Risk",href:"/risk"},{label:"Analytics",href:"/analytics"},{label:"Stocks",href:"/stocks"}];
+const NAV = [{label:"Markets",href:"/stocks"},{label:"Portfolio",href:"/portfolio"},{label:"Risk",href:"/risk"},{label:"Analytics",href:"/analytics"},{label:"Learn",href:"/learn"}];
 export default function NavBar({ variant = "light" }: { variant?: "dark" | "light" }) {
   const path = usePathname();
   return (
@@ -15,7 +15,7 @@ export default function NavBar({ variant = "light" }: { variant?: "dark" | "ligh
       </nav>
       <div className="site-nav-status">
         <span className="site-nav-dot" />
-        <span>LIVE</span>
+        <span>DELAYED DATA</span>
       </div>
     </header>
   );

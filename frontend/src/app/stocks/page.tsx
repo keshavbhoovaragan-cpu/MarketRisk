@@ -1,19 +1,35 @@
 "use client";
 import { useState, useEffect } from "react";
 import NavBar from "@/components/nav/NavBar";
-import { getScreener, compareStocks, getStockDetail } from "@/lib/api";
+import { addWatchlistTicker, compareStocks, getMarketMovers, getScreener, getStockDetail, getWatchlist, removeWatchlistTicker } from "@/lib/api";
 
 export default function StocksPage() {
   const [screener, setScreener] = useState<any[]>([]);
+  const [watchlist, setWatchlist] = useState<any[]>([]);
+  const [movers, setMovers] = useState<any>(null);
   const [detail, setDetail] = useState<any>(null);
   const [compare, setCompare] = useState<any[]>([]);
-  const [tab, setTab] = useState<"screener"|"compare"|"detail">("screener");
+  const [tab, setTab] = useState<"watchlist"|"movers"|"screener"|"compare"|"detail">("watchlist");
   const [loading, setLoading] = useState(true);
   const [dt, setDt] = useState("");
   const [ct, setCt] = useState("AAPL,MSFT,GOOGL,NVDA");
-  useEffect(()=>{ getScreener().then(r=>setScreener(r.stocks||[])).finally(()=>setLoading(false)); },[]);
+  const [watchTicker, setWatchTicker] = useState("");
+  useEffect(()=>{
+    let active = true;
+    const refresh = () => Promise.allSettled([getScreener(), getWatchlist(), getMarketMovers()]).then(([stocksResult, watchlistResult, moversResult])=>{
+      if(!active)return;
+      if(stocksResult.status==="fulfilled")setScreener(stocksResult.value.stocks||[]);
+      if(watchlistResult.status==="fulfilled")setWatchlist(watchlistResult.value.watchlist||[]);
+      if(moversResult.status==="fulfilled")setMovers(moversResult.value);
+    }).finally(()=>{if(active)setLoading(false);});
+    refresh();
+    const interval = window.setInterval(refresh, 60_000);
+    return ()=>{active=false;window.clearInterval(interval);};
+  },[]);
   const loadDetail = () => { if (!dt) return; setLoading(true); setDetail(null); getStockDetail(dt.toUpperCase()).then(setDetail).finally(()=>setLoading(false)); };
   const loadCompare = () => { setLoading(true); compareStocks(ct).then(r=>setCompare(r.comparisons||[])).finally(()=>setLoading(false)); };
+  const addToWatchlist = async () => { if (!watchTicker.trim()) return; await addWatchlistTicker(watchTicker); const result = await getWatchlist(); setWatchlist(result.watchlist||[]); setWatchTicker(""); };
+  const removeFromWatchlist = async (ticker: string) => { await removeWatchlistTicker(ticker); const result = await getWatchlist(); setWatchlist(result.watchlist||[]); };
   const pc=(n:number)=>n>=0?"var(--green)":"var(--red)";
   const sc=(s:string)=>s==="BUY"?"#22c55e":s==="SELL"?"#f87171":"#fbbf24";
   const rc=(v:number)=>v<1.5?"#22c55e":v<2.5?"#fbbf24":"#f87171";
@@ -26,11 +42,24 @@ export default function StocksPage() {
           <p style={{color:"var(--text-muted)",fontSize:14}}>Market screener · Stock comparison · RSI · Moving averages · Fundamentals</p>
         </div>
         <div className="workspace-tabs">
-          {(["screener","compare","detail"] as const).map(t=>(<button className={`workspace-tab${tab===t?" is-active":""}`} key={t} onClick={()=>setTab(t)}>{t}</button>))}
+          {(["watchlist","movers","screener","compare","detail"] as const).map(t=>(<button className={`workspace-tab${tab===t?" is-active":""}`} key={t} onClick={()=>setTab(t)}>{t === "detail" ? "Analyze" : t}</button>))}
         </div>
+        {tab==="watchlist"&&(
+          <div className="card marketwatch-panel" style={{overflow:"hidden"}}>
+            <div className="table-header"><span style={{fontWeight:700,fontSize:13}}>My Watchlist</span><span style={{fontSize:10,color:"var(--text-dim)"}}>YOUR SAVED MARKETS · PROVIDER-TIMESTAMPED</span></div>
+            <div className="watchlist-add"><input aria-label="Ticker to watch" value={watchTicker} onChange={event=>setWatchTicker(event.target.value.toUpperCase())} placeholder="Add ticker, e.g. AAPL" maxLength={15} onKeyDown={event=>event.key==="Enter"&&addToWatchlist()}/><button onClick={addToWatchlist} disabled={!watchTicker.trim()}>Add to watchlist</button></div>
+            {loading?<div className="skeleton" style={{height:140,margin:14}}/>:watchlist.length?<div className="market-table-wrap"><table className="data-table"><thead><tr>{["TICKER","LAST","CHANGE","VOLUME","QUOTE SOURCE","BAR TIME",""].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{watchlist.map((item:any)=><tr key={item.ticker}><td><strong>{item.ticker}</strong></td><td>{item.price===undefined?"—":`$${item.price.toFixed(2)}`}</td><td style={{color:pc(item.change_pct),fontWeight:700}}>{item.change_pct===undefined?"—":`${item.change_pct>=0?"+":""}${item.change_pct.toFixed(2)}%`}</td><td>{item.volume>=1e6?`${(item.volume/1e6).toFixed(1)}M`:item.volume?.toLocaleString()??"—"}</td><td>{item.source??"Yahoo Finance via yfinance"}</td><td>{item.quote_as_of?new Date(item.quote_as_of*1000).toLocaleString():"Unavailable"}</td><td><button className="remove-watch" onClick={()=>removeFromWatchlist(item.ticker)} aria-label={`Remove ${item.ticker}`}>×</button></td></tr>)}</tbody></table></div>:<div className="watchlist-empty">Your watchlist is empty. Add symbols to follow their latest available prices.</div>}
+            <p className="market-data-notice">Yahoo Finance via yfinance is not a guaranteed real-time feed. Verify exchange/provider timestamps; quotes may be delayed or stale.</p>
+          </div>
+        )}
+        {tab==="movers"&&(
+          <div className="movers-grid">
+            {[{title:"Top gainers",items:movers?.gainers},{title:"Top decliners",items:movers?.losers},{title:"Most active",items:movers?.most_active}].map(group=><section className="card movers-panel" key={group.title}><div className="table-header">{group.title}</div>{(group.items||[]).map((item:any)=><button className="mover-row" key={`${group.title}-${item.ticker}`} onClick={()=>{setDt(item.ticker);setTab("detail");}}><strong>{item.ticker}</strong><span>{item.price===undefined?"—":`$${item.price.toFixed(2)}`}</span><span style={{color:pc(item.change_pct)}}>{item.change_pct===undefined?"—":`${item.change_pct>=0?"+":""}${item.change_pct.toFixed(2)}%`}</span></button>)}</section>)}
+          </div>
+        )}
         {tab==="screener"&&(
           <div className="card" style={{overflow:"hidden"}}>
-            <div className="table-header"><span style={{fontWeight:700,fontSize:13}}>Market Screener</span><span style={{fontSize:10,color:"var(--text-dim)"}}>LIVE PRICES · CLICK ROW TO ANALYZE</span></div>
+            <div className="table-header"><span style={{fontWeight:700,fontSize:13}}>Market Screener</span><span style={{fontSize:10,color:"var(--text-dim)"}}>LATEST AVAILABLE · CLICK ROW TO ANALYZE</span></div>
             {loading?(<div style={{padding:20}}>{Array.from({length:8}).map((_,i)=>(<div key={i} className="skeleton" style={{height:40,marginBottom:8,borderRadius:8}}/>))}</div>):(
               <table className="data-table">
                 <thead><tr>{["TICKER","PRICE","CHANGE","VOLUME","MKT CAP","52W HIGH","52W LOW","P/E"].map(h=>(<th key={h}>{h}</th>))}</tr></thead>
@@ -86,7 +115,7 @@ export default function StocksPage() {
                 <div className="card" style={{padding:"20px 24px"}}>
                   <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:16}}>
                     <div><div style={{fontSize:24,fontWeight:900,marginBottom:4}}>{detail.ticker}</div><div style={{color:"var(--text-muted)",fontSize:14,marginBottom:4}}>{detail.name}</div><div style={{fontSize:12,color:"var(--text-dim)"}}>{detail.sector} · {detail.industry}</div></div>
-                    <div style={{textAlign:"right"}}><div style={{fontSize:32,fontWeight:900,letterSpacing:"-0.02em"}}>${detail.current_price?.toFixed(2)}</div><span style={{fontSize:14,fontWeight:700,padding:"4px 12px",borderRadius:20,background:sc(detail.signal)+"15",color:sc(detail.signal),border:`1px solid ${sc(detail.signal)}30`}}>{detail.signal}</span></div>
+                    <div style={{textAlign:"right"}}><div style={{fontSize:32,fontWeight:900,letterSpacing:"-0.02em"}}>${detail.current_price?.toFixed(2)}</div><span style={{fontSize:14,fontWeight:700,padding:"4px 12px",borderRadius:20,background:sc(detail.signal)+"15",color:sc(detail.signal),border:`1px solid ${sc(detail.signal)}30`}}>{detail.signal}</span><div style={{fontSize:9,color:"var(--text-dim)",marginTop:6}}>Rule-based technical indicator · not a recommendation</div><div style={{fontSize:8,color:"var(--text-dim)",marginTop:5}}>{detail.quote_source} · bar {detail.quote_as_of?new Date(detail.quote_as_of*1000).toLocaleString():"timestamp unavailable"}</div></div>
                   </div>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>

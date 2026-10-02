@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.services.market import get_company_info, get_history, get_prices_bulk
+from app.services.market import get_company_info, get_history, get_price, get_prices_bulk
 from app.services.risk import calc_returns, calc_var, calc_sharpe, calc_volatility, calc_beta
 import pandas as pd
 
@@ -36,7 +36,9 @@ async def stock_detail(ticker: str, period: str = "1y"):
     if df.empty: return {**info,"error":"No price history"}
     returns = calc_returns(df["Close"])
     prices = df["Close"]
-    current = float(prices.iloc[-1])
+    latest_quote = get_price(ticker.upper())
+    current = float(latest_quote["price"]) if latest_quote else float(prices.iloc[-1])
+    history_bar_as_of = int(df.index[-1].timestamp()) if hasattr(df.index[-1], "timestamp") else None
     sma_20 = float(prices.rolling(20).mean().iloc[-1]) if len(prices)>=20 else None
     sma_50 = float(prices.rolling(50).mean().iloc[-1]) if len(prices)>=50 else None
     sma_200 = float(prices.rolling(200).mean().iloc[-1]) if len(prices)>=200 else None
@@ -48,7 +50,12 @@ async def stock_detail(ticker: str, period: str = "1y"):
     signal = "BUY" if (sma_50 and current>sma_50 and rsi<70) else "SELL" if (sma_50 and current<sma_50 and rsi>30) else "HOLD"
     spy_df = get_history("SPY", period)
     beta = calc_beta(returns, calc_returns(spy_df["Close"])) if not spy_df.empty else 1.0
-    return {**info,"current_price":round(current,2),"sma_20":round(sma_20,2) if sma_20 else None,
+    return {**info,"current_price":round(current,2),
+        "quote_source":latest_quote.get("source") if latest_quote else "Yahoo Finance history via yfinance",
+        "quote_as_of":latest_quote.get("quote_as_of") if latest_quote else history_bar_as_of,
+        "quote_fetched_at":latest_quote.get("fetched_at") if latest_quote else None,
+        "realtime_guaranteed":False,
+        "sma_20":round(sma_20,2) if sma_20 else None,
         "sma_50":round(sma_50,2) if sma_50 else None,"sma_200":round(sma_200,2) if sma_200 else None,
         "rsi":round(rsi,1),"signal":signal,"var_95":round(calc_var(returns,0.95)*100,2),
         "sharpe":round(calc_sharpe(returns),2),"volatility":round(calc_volatility(returns),2),"beta":round(beta,2)}
