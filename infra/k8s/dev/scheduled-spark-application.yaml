@@ -12,7 +12,7 @@ spec:
   template:
     type: Python
     mode: cluster
-    image: ghcr.io/keshavbhoovaragan-cpu/marketrisk-spark-job:7e3507f495deaae7763be90bdaf6a33228484856
+    image: ghcr.io/keshavbhoovaragan-cpu/marketrisk-spark-job:b477d9900af1a618792afc6f93eaf3b593a77129
     imagePullPolicy: IfNotPresent
     mainApplicationFile: local:///opt/marketrisk/spark_jobs/risk_batch.py
     sparkVersion: 4.0.1

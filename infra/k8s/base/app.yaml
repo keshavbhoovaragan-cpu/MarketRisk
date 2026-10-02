@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: ghcr.io/keshavbhoovaragan-cpu/marketrisk-api:7e3507f495deaae7763be90bdaf6a33228484856
+          image: ghcr.io/keshavbhoovaragan-cpu/marketrisk-api:b477d9900af1a618792afc6f93eaf3b593a77129
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -100,7 +100,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/keshavbhoovaragan-cpu/marketrisk-frontend:7e3507f495deaae7763be90bdaf6a33228484856
+          image: ghcr.io/keshavbhoovaragan-cpu/marketrisk-frontend:b477d9900af1a618792afc6f93eaf3b593a77129
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
