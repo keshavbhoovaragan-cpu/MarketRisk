@@ -6,7 +6,7 @@ metadata:
 spec:
   type: Python
   mode: cluster
-  image: marketrisk-spark-job:latest
+  image: ghcr.io/keshavbhoovaragan-cpu/marketrisk-spark-job:7e3507f495deaae7763be90bdaf6a33228484856
   imagePullPolicy: IfNotPresent
   mainApplicationFile: local:///opt/marketrisk/spark_jobs/risk_batch.py
   sparkVersion: 4.0.1
